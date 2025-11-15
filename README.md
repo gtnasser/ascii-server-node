@@ -1,10 +1,10 @@
-#ascii-server-node
+# ascii-server-node
 
 Servidor simples de ASCII
 
 Este projeto é bem divertido.
 
-Inspirado em [ascii.live](https://ascii.live), vou criar um servidor em node.js que transmite animações ASCII em tempo real, para ser acessado através de um navegador. 
+Inspirado em [ascii.live](https://ascii.live), vamos criar um servidor em node.js que transmite animações ASCII em tempo real, para ser acessado através de um navegador. 
 
 Características:
 - API em node.js, utilizando express
@@ -105,3 +105,60 @@ git init
 git add .
 git commit -m "feat read ascii file"
 ``` 
+
+Criar a pagina simples na pasta **public**, testando como será a visualização do texto ASCII.
+index.html
+```htm
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASCII Live Client</title>
+  <style>
+      html, body {
+          background: #000; 
+      color: #0f0; 
+      margin: 0; height: 100%;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 12px;
+    }
+    #hud {
+        background: #000; 
+      color: #ff0; 
+    }
+  </style>
+</head>
+<body>
+    <div id="hud"></div>
+  <div id="wrap"><pre id="screen"></pre></div>
+  <script>
+      const hud = document.getElementById('hud');
+    const screen = document.getElementById('screen');
+    // testando saida dos textos
+    hud.innerHTML = "HUD OUTPUT HERE"
+    screen.innerHTML = "ASCII OUTPUT HERE"
+  </script>
+</body>
+</html>
+```
+
+Vamos colocar a API no ar, criando um servidor web com o **express** na porta 3000, e servindo o arquivo **index.html**. 
+adicionar em server.js:
+```js
+const express = require("express");
+
+// Porta Web
+const PORT = process.env.PORT || 3000;
+
+// Servidor Web
+const app = express();
+
+// publica pagina estatica
+app.use(express.static(public));
+
+const server = app.listen(PORT, () => {
+  console.log(`Servidor HTTP em http://localhost:${PORT}`);
+});
+```
+
