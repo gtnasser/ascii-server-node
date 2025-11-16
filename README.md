@@ -208,6 +208,56 @@ curl ws://localhost:3000/frames
 {"type":"meta","fps":1,"totalFrames":4}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #01   |\r\n|   ( ^_^)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #02   |\r\n|   ( -_-)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #03   |\r\n|   ( o_o)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #04   |\r\n|   ( +_+)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #01   |\r\n|   ( ^_^)     |\r\n|              |\r\n+--------------+\r"}^C
 ```
 
+Neste ponto podemos pensar, não seria interessante identificar quem está fazendo esta requisição e alterar o retorno para o cliente correto? Se for um navegador o retorno será a página cliente e implementamos nela um código para extrair os frames enviados pelo websocket. Se não for, verificamos se é um cliente requisitando o websocket, e o retorno será um JSON. E se for outro cliente, por exemplo o CURL, o retorno será em texto puro.
+
+Adicionar em server.js:
+```js
+// Rota principal diferenciando navegador/curl
+app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  console.log(`ua: ${ua}`);
+  if (ua.includes('curl')) {
+
+    res.type('text/plain');
+    res.send("Use /stream para ver animação em tempo real via curl.\n");
+
+  } else {
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  }
+});
+
+// Rota SSE para streaming contínuo
+app.get('/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  console.log('Navegador conectado.');
+
+  let i = 0;
+  const timer = setInterval(() => {
+    const frame = frames[i % frames.length];
+    res.write(`${frame}\n`);
+    i++;
+  }, (1000 / FRAMES_PER_SECOND) );
+
+  req.on('close', () => {
+    clearInterval(timer);
+    console.log('Navegador desconectado.');
+  });
+});
+```
+
+Para testar novamente as requisições, abrir o navegador em (http://localhost:3000) ou através de linha de comando:
+```shell
+# curl requisitando HTTP/GET
+curl http://localhost:3000
+
+# curl requisitando websocket
+curl ws://localhost:3000
+
+# wscat
+npx wscat -c ws://localhost:3000
+```
 
 
 

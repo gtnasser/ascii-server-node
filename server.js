@@ -1,12 +1,15 @@
 const fs = require('fs')
 const path = require('path')
 const express = require("express")
+const { WebSocketServer } = require('ws')
 
-// repositorio local
+// Repositório local
 const local = path.join(__dirname, 'public')
 
-// Linhas por frame 
+// Parâmetros de exibição 
 const LINES_PER_FRAME = process.env.LINES_PER_FRAME || 6
+const FRAMES_PER_SECOND = 1 // obs: FRAME_INTERVAL = 1000 / FPS
+
 // Porta Web
 const PORT = process.env.PORT || 3000
 
@@ -29,33 +32,47 @@ console.log(`Total de frames carregados: ${frames.length}`)
 // Servidor Web
 const app = express();
 
-// publica pagina estatica
-app.use(express.static(local))
+// Rota principal diferenciando navegador/curl
+app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  console.log(`ua: ${ua}`);
+  if (ua.includes('curl')) {
 
+    res.type('text/plain');
+    res.send("Use /stream para ver animação em tempo real via curl.\n");
 
-
-app.get('/frames', (req, res) => {
-  res.type('text/plain');
-  res.send(frames[0]); // devolve só o primeiro frame
+  } else {
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  }
 });
 
+// Rota SSE para streaming contínuo
+app.get('/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  console.log('Navegador conectado.');
 
+  let i = 0;
+  const timer = setInterval(() => {
+    const frame = frames[i % frames.length];
+    res.write(`${frame}\n`);
+    i++;
+  }, (1000 / FRAMES_PER_SECOND) );
 
+  req.on('close', () => {
+    clearInterval(timer);
+    console.log('Navegador desconectado.');
+  });
+});
+
+// Executa o servidor HTTP
 const server = app.listen(PORT, () => {
   console.log(`Servidor HTTP em http://localhost:${PORT}`)
 });
 
-
-
-
-// Vamos incluir um **websocket** e mapear os eventos início e fim da conexão
-// para inicar/parar o envio continuo dos frames
-
-const FRAMES_PER_SECOND = 1 // obs: FRAME_INTERVAL = 1000 / FPS
-
-const { WebSocketServer } = require('ws')
+// WebSocket e eventos início/fim da conexão
 const wss = new WebSocketServer({ server });
-
 wss.on('connection', (ws) => {
   console.log('Cliente conectado.');
   ws.send(JSON.stringify({ type: 'meta', fps: FRAMES_PER_SECOND, totalFrames: frames.length }));
@@ -79,8 +96,3 @@ console.log(`${i % frames.length}\n${frame}`)
 });
 
 
-/*
-O servidor está enviando os frames ASCII via WebSocket em formato JSON.
-O CURL faz uma requisição normal (GET), e não entende o protocolo Websocket, então mostra os pacotes exatamente como recebeu do servidor.
-O navegador abre o index.html e o JavaScript dentro dele inicia uma conexão WebSocket e interpreta corretamente a mensagem JSON ({ type: 'frame', data: '...' }) tratando crretamente os dados recebidos.
-*/
