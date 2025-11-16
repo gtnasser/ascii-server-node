@@ -7,27 +7,35 @@ const { WebSocketServer } = require('ws')
 const local = path.join(__dirname, 'public')
 
 // Parâmetros de exibição 
-const LINES_PER_FRAME = process.env.LINES_PER_FRAME || 6
-const FRAMES_PER_SECOND = 1 // obs: FRAME_INTERVAL = 1000 / FPS
+const LINES_PER_FRAME = parseInt(process.env.LINES_PER_FRAME) || 6
+const FRAMES_PER_SECOND = parseInt(process.env.FRAMES_PER_SECOND) || 2 // obs: FRAME_INTERVAL = 1000 / FPS
+const FILENAME = process.env.FILENAME || 'frames.ascii'
+
+console.log(`LINES_PER_FRAME = ${LINES_PER_FRAME}`)
+console.log(`FRAMES_PER_SECOND = ${FRAMES_PER_SECOND}`)
+console.log(`FILENAME = ${FILENAME}`)
 
 // Porta Web
 const PORT = process.env.PORT || 3000
 
 // Carrega frames ASCII
-const asciiFile = path.join(local, 'frames.ascii')
+const asciiFile = path.join(local, FILENAME)
 const raw = fs.readFileSync(asciiFile, 'utf8')
 
 // Quebra em linhas
 const linhas = raw.split('\n')
+console.log(`linhas:${linhas.length}`);
 
 // Agrupa linhas em frames
 const frames = []
 for (let i = 0; i < linhas.length; i += LINES_PER_FRAME) {
   frame = linhas.slice(i, i + LINES_PER_FRAME).join('\n')
+  console.log(`${i}, ${i + LINES_PER_FRAME}, ${frame.length}`);
   frames.push(frame)
-  console.log(`#${i}\n${frame}`)
+//  console.log(`${i}\n${frame}`);
 }
-console.log(`Total de frames carregados: ${frames.length}`)
+console.log(`linhas:${linhas.length}, frames:${frames.length}`);
+
 
 // Servidor Web
 const app = express();
@@ -37,10 +45,8 @@ app.get('/', (req, res) => {
   const ua = req.headers['user-agent'] || '';
   console.log(`ua: ${ua}`);
   if (ua.includes('curl')) {
-
     res.type('text/plain');
     res.send("Use /stream para ver animação em tempo real via curl.\n");
-
   } else {
     res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
   }
@@ -84,7 +90,6 @@ wss.on('connection', (ws) => {
       return;
     }
     const frame = frames[i % frames.length];
-console.log(`${i % frames.length}\n${frame}`)
     ws.send(JSON.stringify({ type: 'frame', data: frame }));
     i++;
   }, (1000 / FRAMES_PER_SECOND) );

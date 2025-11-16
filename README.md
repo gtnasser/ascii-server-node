@@ -30,6 +30,7 @@ npm list
 ```
 
 Esperado:
+
 ```shell
 ascii-server-node@1.0.0 C:\Users\gtnas\Downloads\ascii-server
 ├── express@5.1.0
@@ -39,6 +40,7 @@ ascii-server-node@1.0.0 C:\Users\gtnas\Downloads\ascii-server
 Criar uma pasta ```public``` e copiar para ela o arquivo ascii a ser publicado, bem como a pagina ```inex.html``` para visualizá-la.
 
 criar um arquivo ```frames.ascii``` com os frames de teste:
+
 ```
 +--------------+
 |              |
@@ -90,15 +92,16 @@ for (let i = 0; i < linhas.length; i += LPF) {
   console.log(`#${i}\n${frame}`)
 }
 console.log(`Total de frames carregados: ${frames.length}`)
-
 ```
 
 Para testar... Tem que mostrar na saída padrão cada frame numerado e o total de frames carregados. 
+
 ```shell
 node server.js
 ```
 
 Pausa para salvar o que fizemos até agora. Vamos criar um repositório, adicionar o **.gitignore** e criar o primeiro **commit**:
+
 ```shell
 curl https://raw.githubusercontent.com/github/gitignore/refs/heads/main/Node.gitignore > .gitignore
 git init
@@ -107,7 +110,8 @@ git commit -m "feat read ascii file"
 ``` 
 
 Criar a pagina simples na pasta **public**, testando como será a visualização do texto ASCII.
-index.html
+index.html:
+
 ```htm
 <!doctype html>
 <html lang="pt-BR">
@@ -145,6 +149,7 @@ index.html
 
 Vamos colocar a API no ar, criando um servidor web com o **express** na porta 3000, e servindo o arquivo **index.html**. 
 Adicionar em server.js:
+
 ```js
 const express = require("express");
 
@@ -164,11 +169,12 @@ const server = app.listen(PORT, () => {
 
 Para testar, executar o servidor e abrir o navegador em (http://localhost:3000) e visualizar a página do cliente:
 
-![Página cliente](public\client1.png)
+![Página cliente](public/client1.png)
 
 
 Agora vamos incluir um **websocket** e mapear os eventos início e fim da conexão para iniciar/parar o envio continuo dos frames.
 Adicionar em server.js:
+
 ```js
 const FRAMES_PER_SECOND = 1 // obs: FRAME_INTERVAL = 1000 / FPS
 
@@ -202,6 +208,7 @@ Vamos testar o **websocket** usando o ```CURL``` de 2 maneiras.
 A primeira é simular uma chamada HTTP/GET igual um navegador faria, ```curl http://localhost:3000```, o retorno será o fonte da página html. Isso já era esperado
 
 A segunda é chamar o websocket através do protocolo ```ws://```. Como o CURL não interpreta o protocolo do **websocket**, ele irá retornar exatamente o conteúdo recebido, neste caso o retorno é um JSON contendo os frames e que que está sendo enviado continuamente. 
+
 ```shell
 curl ws://localhost:3000/frames
 
@@ -211,6 +218,7 @@ curl ws://localhost:3000/frames
 Neste ponto podemos pensar, não seria interessante identificar quem está fazendo esta requisição e alterar o retorno para o cliente correto? Se for um navegador o retorno será a página cliente e implementamos nela um código para extrair os frames enviados pelo websocket. Se não for, verificamos se é um cliente requisitando o websocket, e o retorno será um JSON. E se for outro cliente, por exemplo o CURL, o retorno será em texto puro.
 
 Adicionar em server.js:
+
 ```js
 // Rota principal diferenciando navegador/curl
 app.get('/', (req, res) => {
@@ -248,6 +256,7 @@ app.get('/stream', (req, res) => {
 ```
 
 Para testar novamente as requisições, abrir o navegador em (http://localhost:3000) ou através de linha de comando:
+
 ```shell
 # curl requisitando HTTP/GET
 curl http://localhost:3000
@@ -259,6 +268,77 @@ curl ws://localhost:3000
 npx wscat -c ws://localhost:3000
 ```
 
+E finalmente, ativar a requisição do websocket pela página cliente:
+
+adicionar em index.html, em <script>:
+
+```js
+   let fps = 0, totalFrames = 0;
+    ws.addEventListener('open', () => hud.textContent = 'Conectado');
+
+    ws.addEventListener('message', (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'meta') {
+          fps = msg.fps; totalFrames = msg.totalFrames;
+          hud.textContent = `Conectado | FPS: ${fps} | Frames: ${totalFrames}`;
+        } else if (msg.type === 'frame') {
+          screen.textContent = msg.data;
+        }
+      } catch {
+        screen.textContent = ev.data;
+      }
+    });
+
+    ws.addEventListener('close', () => hud.textContent = 'Desconectado');
+    ws.addEventListener('error', () => hud.textContent = 'Erro de conexão');
+```
 
 
+## TO RUN
+
+Para executar este projeto, seguir os passos para baixar, instalar as dependências e executar com os valores padrão:
+```script
+git clone https://github.com/gtnasser/ascii-server-node.git
+cd ascii-server-node
+npm i
+npm start
+```
+
+Para alterar os valores - por exemplo usar a porta 4000, com 5 FPS e publicar o arquivo teste2.ascii - podemos fazê-lo de diversas formas:
+
+Linux / macOS (bash/zsh):
+```bash
+PORT=4000 FPS=5 node server.js
+```
+
+Windows (cmd):
+```shell
+set PORT=4000
+set FPS=5
+node server.js
+Windows (PowerShell):
+```
+
+Windows (PowerShell):
+```shell
+$env:PORT=4000
+$env:FPS=5
+node server.js
+```
+
+Alterar o arquivo de definições do projeto package.json, e executar como ```npm run teste2```:
+```json
+  "scripts": {
+    "start": "node server.js",
+    "teste2": "PORT=4000 FRAMES_PER_SECOND=5 FILENAME=teste2.ascii node server.js",
+  },
+``` 
+
+No Windows (cmd/PowerShell), a sintaxe ```PORT=3000 FPS=12 node server.js``` não funciona. Para manter a compatibilidade, tem que instalar e usar o pacote cross-env, e alterar o package.json para:
+```json
+  "scripts": {
+    "teste2": "cross-env PORT=4000 FRAMES_PER_SECOND=5 FILENAME=teste2.ascii node server.js",
+  }
+```
 

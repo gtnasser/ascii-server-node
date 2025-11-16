@@ -12,10 +12,20 @@
       font-family: "Courier New", Courier, monospace;
       font-size: 12px;
     }
+    #wrap { 
+      display: flex; 
+      align-items: center; 
+      justify-content: 
+      center; height: 100%; 
+    }
     #hud {
       background: #000; 
       color: #ff0; 
     }
+    pre {
+      max-width: 95vw; max-height: 95vh; overflow: hidden;
+    }
+
   </style>
 </head>
 <body>
@@ -26,9 +36,30 @@
     const hud = document.getElementById('hud');
     const screen = document.getElementById('screen');
 
-    // testando saida dos textos
-    hud.innerHTML = "HUD OUTPUT HERE"
-    screen.innerHTML = "ASCII OUTPUT HERE"
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    hud.innerHTML += "<br>"+protocol
+    const ws = new WebSocket(`${protocol}://${location.host}`);
+
+    let fps = 0, totalFrames = 0;
+    ws.addEventListener('open', () => hud.textContent = 'Conectado');
+
+    ws.addEventListener('message', (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'meta') {
+          fps = msg.fps; totalFrames = msg.totalFrames;
+          hud.textContent = `Conectado | FPS: ${fps} | Frames: ${totalFrames}`;
+        } else if (msg.type === 'frame') {
+          screen.textContent = msg.data;
+        }
+      } catch {
+        screen.textContent = ev.data;
+      }
+    });
+
+    ws.addEventListener('close', () => hud.textContent = 'Desconectado');
+    ws.addEventListener('error', () => hud.textContent = 'Erro de conexão');
+
   </script>
 </body>
 </html>

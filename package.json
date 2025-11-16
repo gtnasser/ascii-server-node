@@ -7,10 +7,15 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "teste2": "cross-env PORT=3000 FRAMES_PER_SECOND=1 LINES_PER_FRAME=62 FILENAME=teste2.ascii node server.js"
   },
   "dependencies": {
     "express": "^5.1.0",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }
