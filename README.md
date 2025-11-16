@@ -144,7 +144,7 @@ index.html
 ```
 
 Vamos colocar a API no ar, criando um servidor web com o **express** na porta 3000, e servindo o arquivo **index.html**. 
-adicionar em server.js:
+Adicionar em server.js:
 ```js
 const express = require("express");
 
@@ -161,4 +161,54 @@ const server = app.listen(PORT, () => {
   console.log(`Servidor HTTP em http://localhost:${PORT}`);
 });
 ```
+
+Para testar, executar o servidor e abrir o navegador em (http://localhost:3000) e visualizar a página do cliente:
+
+![Página cliente](public\client1.png)
+
+
+Agora vamos incluir um **websocket** e mapear os eventos início e fim da conexão para iniciar/parar o envio continuo dos frames.
+Adicionar em server.js:
+```js
+const FRAMES_PER_SECOND = 1 // obs: FRAME_INTERVAL = 1000 / FPS
+
+const { WebSocketServer } = require('ws')
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  console.log('Cliente conectado.');
+  ws.send(JSON.stringify({ type: 'meta', fps: FRAMES_PER_SECOND, totalFrames: frames.length }));
+
+  let i = 0;
+  const timer = setInterval(() => {
+    if (ws.readyState !== ws.OPEN) {
+      clearInterval(timer);
+      return;
+    }
+    const frame = frames[i % frames.length];
+    ws.send(JSON.stringify({ type: 'frame', data: frame }));
+    i++;
+  }, (1000 / FRAMES_PER_SECOND) );
+
+  ws.on('close', () => {
+    clearInterval(timer);
+    console.log('Cliente desconectado.');
+  });
+});
+```
+
+Vamos testar o **websocket** usando o ```CURL``` de 2 maneiras. 
+
+A primeira é simular uma chamada HTTP/GET igual um navegador faria, ```curl http://localhost:3000```, o retorno será o fonte da página html. Isso já era esperado
+
+A segunda é chamar o websocket através do protocolo ```ws://```. Como o CURL não interpreta o protocolo do **websocket**, ele irá retornar exatamente o conteúdo recebido, neste caso o retorno é um JSON contendo os frames e que que está sendo enviado continuamente. 
+```shell
+curl ws://localhost:3000/frames
+
+{"type":"meta","fps":1,"totalFrames":4}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #01   |\r\n|   ( ^_^)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #02   |\r\n|   ( -_-)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #03   |\r\n|   ( o_o)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #04   |\r\n|   ( +_+)     |\r\n|              |\r\n+--------------+\r"}{"type":"frame","data":"+--------------+\r\n|              |\r\n|  FRAME #01   |\r\n|   ( ^_^)     |\r\n|              |\r\n+--------------+\r"}^C
+```
+
+
+
+
 
